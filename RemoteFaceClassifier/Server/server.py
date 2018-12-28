@@ -23,13 +23,21 @@ class FaceClassifierServer:
             frame_idx, img = pickle.loads(post_data)
 
             if SERVER_MODE == "Stateless":
-                maxI, predictions = stateless_infer(img, SERVER_STATELESS)
+                maxI_lst, predictions_lst, bb_lst = stateless_infer(img, SERVER_STATELESS)
             elif SERVER_MODE == "Stateful":
-                maxI, predictions = stateful_infer(img, SERVER_STATEFUL)
+                maxI_lst, predictions_lst, bb_lst = stateful_infer(img, SERVER_STATEFUL)
             else:
                 raise Exception("Invalid SERVER_MODE {}: ['Stateful', 'Stateless']".format(SERVER_MODE))
 
-            requests.post("http://{}:{}".format(CLIENT, str(CLIENT_RES_PORT)), data=pickle.dumps((frame_idx, maxI, predictions)))
+            # convert boundaries from dlib.rectanngle to corner points
+            bb_bl_lst = []
+            bb_tr_lst = []
+            for bb in bb_lst:
+                bb_bl_lst.append((bb.bl_corner().x, bb.bl_corner().y))
+                bb_tr_lst.append((bb.tr_corner().x, bb.tr_corner().y))
+
+            requests.post("http://{}:{}".format(CLIENT, str(CLIENT_RES_PORT)),
+                          data=pickle.dumps((frame_idx, maxI_lst, predictions_lst, bb_bl_lst, bb_tr_lst)))
 
 
     def start(self):

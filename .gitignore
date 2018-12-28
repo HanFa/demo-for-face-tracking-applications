@@ -1,0 +1,8 @@
+cache.t7
+*.pyc
+.idea
+__pycache__
+.vscode
+raw
+align
+CurrentReps

@@ -49,6 +49,7 @@ import shutil
 
 
 def getRep(img_array, multiple=False):
+    """Return the representations and boundaries for each person."""
     start = time.time()
     rgbImg = img_array
 
@@ -81,7 +82,7 @@ def getRep(img_array, multiple=False):
             bb,
             landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
         if alignedFace is None:
-            raise Exception("Unable to align image: {}".format(imgPath))
+            raise Exception("Unable to align image")
         if SERVER_VERBOSE:
             print("Alignment took {} seconds.".format(time.time() - start))
             print("This bbox is centered at {}, {}".format(bb.center().x, bb.center().y))
@@ -91,7 +92,7 @@ def getRep(img_array, multiple=False):
         if SERVER_VERBOSE:
             print("Neural network forward pass took {} seconds.".format(
                 time.time() - start))
-        reps.append((bb.center().x, rep))
+        reps.append((bb.center().x, rep, bb))
     sreps = sorted(reps, key=lambda x: x[0])
     return sreps
 
@@ -122,12 +123,9 @@ def train():
 
 def stateful_infer(img_array, stateful_model):
     # Predict using current model
-    maxI, predictions = stateless_infer(img_array, stateful_model)
+    maxI_lst, predictions_lst, bb_lst = stateless_infer(img_array, stateful_model)
 
     # Dump the image
-    if os.path.exists(SERVER_ALIGN_DIR):
-        shutil.rmtree(SERVER_ALIGN_DIR)
-
     if not os.path.exists(SERVER_RAW_DIR):
         os.mkdir(SERVER_RAW_DIR)
 
@@ -138,7 +136,6 @@ def stateful_infer(img_array, stateful_model):
         "python {} --dlibFacePredictor {} {} align outerEyesAndNose {} --size {}"
         .format(os.path.join(fileDir, "aligndlib.py"), SERVER_DLIB_FACEPREDICTOR, SERVER_RAW_DIR, SERVER_ALIGN_DIR, SERVER_IMG_DIM))
 
-    alignMain()
     # Get the reps
     os.system(
         "{} -model {} -outDir {} -data {}".format(os.path.join(fileDir, "batch-represent", "main.lua"), SERVER_OPENFACE_MODEL, SERVER_REPS_DIR, SERVER_ALIGN_DIR)
@@ -153,7 +150,7 @@ def stateful_infer(img_array, stateful_model):
     # Refit the model
     train()
 
-    return maxI, predictions
+    return maxI_lst, predictions_lst, bb_lst
 
 
 def stateless_infer(img_array, model):
@@ -166,16 +163,23 @@ def stateless_infer(img_array, model):
     print("\n=== Stateless {} ===")
     reps = getRep(img_array, SERVER_MULT_FACE_INFER)
     print("reps : {}".format(reps))
+
+    maxI_lst = []
+    predictions_lst = []
+    bb_lst = []
+
     if len(reps) > 1:
         print("List of faces in image from left to right")
     for r in reps:
         rep = r[1].reshape(1, -1)
-        bbx = r[0]
-        start = time.time()
         predictions = clf.predict_proba(rep).ravel()
         maxI = np.argmax(predictions)
 
-        return maxI, predictions
+        maxI_lst.append(maxI)
+        predictions_lst.append(predictions)
+        bb_lst.append(r[2])
+
+    return maxI_lst, predictions_lst, bb_lst
 
 
 if __name__ == '__main__':

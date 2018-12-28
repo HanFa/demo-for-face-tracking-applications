@@ -6,4 +6,5 @@ rm -rf RemoteFaceClassifier/Server/CurrentReps/
 rm -rf RemoteFaceClassifier/Server/Stateful/
 mkdir RemoteFaceClassifier/Server/Stateful/
 cp -r RemoteFaceClassifier/Server/Stateless/* RemoteFaceClassifier/Server/Stateful/
+chmod 777 RemoteFaceClassifier/Server/Stateful/*
 echo "Reset the stateful model to its original pretrained states."

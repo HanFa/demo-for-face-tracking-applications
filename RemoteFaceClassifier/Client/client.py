@@ -12,6 +12,24 @@ from RemoteFaceClassifier.Client import *
 
 class FaceClassifierResultsListener:
     class ClientListenHandler(SimpleHTTPRequestHandler):
+
+        def _print_res(self, frame_idx, maxI_lst, predictions_lst, bb_bl_lst, bb_tr_lst):
+            """Print the results for face classification.
+                Input:
+                @frame_idx: index for the current frame
+                @maxI_lst: classification labels for each face
+                @predictions_lst: classification confidences for each face
+                @bb_bl_lst: face boundaries
+            """
+            assert len(maxI_lst) == len(predictions_lst)
+
+            print("Recv results for frame #{}".format(frame_idx))
+
+            for i in range(len(maxI_lst)):
+                print("\t Person id: {} \t confidence: {} \t Bound: {} {}"
+                      .format(maxI_lst[i], predictions_lst[i], bb_bl_lst[i], bb_tr_lst[i]))
+
+
         def _set_response(self):
             self.send_response(code=200)
             self.send_header("Content-type", "text/html")
@@ -21,8 +39,11 @@ class FaceClassifierResultsListener:
             self._set_response()
             content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
             post_data = self.rfile.read(content_length)  # <--- Gets the data itself
-            frame_idx, maxI, predictions = pickle.loads(post_data)
-            print("Recv results for frame #{}: {}, {}".format(frame_idx, maxI, predictions))
+
+
+            frame_idx, maxI_lst, predictions_lst, bb_bl_lst, bb_tr_lst = pickle.loads(post_data)
+            self._print_res(frame_idx, maxI_lst, predictions_lst, bb_bl_lst, bb_tr_lst)
+
 
     def start(self):
         SocketServer.TCPServer.allow_reuse_address = True
@@ -60,7 +81,8 @@ class FaceClassifierClient:
             while success:
                 frame_idx += 1
                 success, img = vidcap.read()
-                requests.post("http://{}:{}".format(SERVER, str(SERVER_FRAME_PORT)), data=pickle.dumps((frame_idx, img)))
+                requests.post("http://{}:{}".format(SERVER, str(SERVER_FRAME_PORT)),
+                              data=pickle.dumps((frame_idx, img)))
                 sleep(CLIENT_FRAME_INTERVAL / 1000.0)
 
         except KeyboardInterrupt:
