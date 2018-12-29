@@ -129,6 +129,8 @@ def stateful_infer(img_array, stateful_model):
     if not os.path.exists(SERVER_RAW_DIR):
         os.mkdir(SERVER_RAW_DIR)
 
+    if len(bb_lst) == 0: return maxI_lst, predictions_lst, bb_lst
+
     Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)).save(os.path.join(SERVER_RAW_DIR, "temp.png"))
 
     # Align the face
@@ -223,8 +225,6 @@ if __name__ == '__main__':
             time.time() - start))
 
     start = time.time()
-
-
 
     if SERVER_VERBOSE:
         print("Loading the dlib and OpenFace models took {} seconds.".format(

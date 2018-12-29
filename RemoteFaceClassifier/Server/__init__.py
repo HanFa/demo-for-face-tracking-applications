@@ -7,7 +7,7 @@ SERVER_VERBOSE = False
 SERVER_IMG_DIM = 96
 SERVER_CUDA = False
 
-SERVER_MODE = "Stateful"
+SERVER_MODE = "Stateless"
 
 SERVER_CLASSIFIER = "LinearSvm"
 
@@ -22,7 +22,7 @@ SERVER_RAW_DIR = os.path.join(fileDir, "raw")
 SERVER_ALIGN_DIR = os.path.join(fileDir, "align")
 SERVER_REPS_DIR = os.path.join(fileDir, "CurrentReps")
 
-SERVER_MULT_FACE_INFER = False
+SERVER_MULT_FACE_INFER = True
 
 align = openface.AlignDlib(SERVER_DLIB_FACEPREDICTOR)
 net = openface.TorchNeuralNet(SERVER_OPENFACE_MODEL, imgDim=SERVER_IMG_DIM,
