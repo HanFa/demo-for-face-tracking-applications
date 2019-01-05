@@ -20,7 +20,7 @@ if [ ! -d "./dataset" ] || [ ! -d "./dataset/raw" ]; then
 fi
 
 # clear the caches
-find ./dataset -name "cache.t7" -type f -delete
+find . -name "cache.t7" -type f -delete
 
 # align the faces
 python ./utils/align-dlib.py  --dlibFacePredictor './RemoteFaceClassifier/Server/FacePredictor/shape_predictor_68_face_landmarks.dat' ./dataset/raw align outerEyesAndNose ./dataset/align --size 96

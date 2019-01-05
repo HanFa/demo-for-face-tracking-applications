@@ -126,17 +126,21 @@ def stateful_infer(img_array, stateful_model):
     maxI_lst, predictions_lst, bb_lst = stateless_infer(img_array, stateful_model)
 
     # Dump the image
-    if not os.path.exists(SERVER_RAW_DIR):
-        os.mkdir(SERVER_RAW_DIR)
+    if os.path.exists(SERVER_ALIGN_DIR):
+        shutil.rmtree(SERVER_ALIGN_DIR)
+
+    os.mkdir(SERVER_ALIGN_DIR)
 
     if len(bb_lst) == 0: return maxI_lst, predictions_lst, bb_lst
 
-    Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)).save(os.path.join(SERVER_RAW_DIR, "temp.png"))
+    for idx, bb in enumerate(bb_lst):
+        img_sub_array = img_array[bb.top() : bb.bottom(), bb.left() : bb.right()]
 
-    # Align the face
-    os.system(
-        "python {} --dlibFacePredictor {} {} align outerEyesAndNose {} --size {}"
-        .format(os.path.join(fileDir, "aligndlib.py"), SERVER_DLIB_FACEPREDICTOR, SERVER_RAW_DIR, SERVER_ALIGN_DIR, SERVER_IMG_DIM))
+        maxI = str(maxI_lst[idx])
+        if not os.path.exists(os.path.join(SERVER_ALIGN_DIR, maxI)):
+            os.mkdir(os.path.join(SERVER_ALIGN_DIR, maxI))
+
+        Image.fromarray(cv2.cvtColor(img_sub_array, cv2.COLOR_BGR2RGB)).save(os.path.join(SERVER_ALIGN_DIR, maxI, 'temp.png'))
 
     # Get the reps
     os.system(
@@ -148,7 +152,7 @@ def stateful_infer(img_array, stateful_model):
         with open(os.path.join(os.path.dirname(SERVER_STATEFUL), csv_file), 'a') as main:
             with open(os.path.join(SERVER_REPS_DIR, csv_file), 'r') as current:
                 main.writelines(current.readlines())
-    
+
     # Refit the model
     train()
 

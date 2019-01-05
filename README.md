@@ -1,4 +1,4 @@
-# Remote client-server architecture for CMU face classification application
+# Remote client-server architecture demo based on CMU face classification application
 ## Current Progress
 Client will send a frame every `CLIENT_FRAME_INTERVAL` which is configurable at `./RemoteFaceClassifier/Client/__init__.py`. 
 It will has another thread receiving results.
@@ -44,21 +44,48 @@ The stateless model is currently running with a pre-trained model `RemoteFaceCla
 8 directories, 21 files
 
 ```
-## To run the client
+## run the client
 
 ```bash
 ./run_client.sh
 ```
 
-## To run the server
+## run the server
 ```bash
 ./run_server.sh
 ```
 
-## To reset the stateful
+## reset the stateful
+This script will reset the stateful server to its initial state, which is identical with the pretrained stateless model.
 ```bash
 ./reset_stateful_model.sh
 ```
 
-## To toggle between stateful/stateless
+## update the pre-trained dataset
+You should make sure the dataset exists in the folder `dataset/raw`, in the following format
+```bash
+raw
+├── joe
+│   ├── 1.jpg
+│   ├── 2.jpg
+│   ├── 3.jpg
+│   ├── 4.jpg
+│   ├── 5.jpg
+│   └── 6.jpg
+└── obama
+    ├── 1.jpg
+    ├── 2.jpg
+    ├── 3.jpg
+    ├── 4.jpg
+    ├── 5.jpg
+    └── 6.jpg
+
+2 directories, 12 files
+```
+Then run the script `load_pretrain_model.sh`. This script will retrain both stateful and stateless models, with the dataset in `raw` folder.
+
+## toggle between stateful/stateless
 Change the configuration `SERVER_MODE = "Stateful"` or `SERVER_MODE = "Stateless"` in [./RemoteFaceClassifier/Server/__init__.py](./RemoteFaceClassifier/Server/__init__.py).
+
+## demo
+The demo video url is [DEMO_URL.txt](DEMO_URL.txt).
