@@ -8,6 +8,7 @@ SERVER_IMG_DIM = 96
 SERVER_CUDA = False
 
 SERVER_MODE = "Stateless"
+SERVER_UPDATE_FREQUENCY = 3 # Trigger an update of stateful model every n frames
 
 SERVER_CLASSIFIER = "LinearSvm"
 

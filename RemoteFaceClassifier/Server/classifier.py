@@ -28,25 +28,16 @@ import os
 import pickle
 import sys
 
-from operator import itemgetter
-
 import numpy as np
 
 np.set_printoptions(precision=2)
 import pandas as pd
 
-import openface
-
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import GaussianNB
 from RemoteFaceClassifier.Server import *
-from RemoteFaceClassifier.Server.aligndlib import alignMain
 from PIL import Image
-import shutil
-
+from globals import *
 
 def getRep(img_array, multiple=False):
     """Return the representations and boundaries for each person."""
@@ -121,18 +112,16 @@ def train():
         pickle.dump((le, clf), f)
 
 
-def stateful_infer(img_array, stateful_model):
+def stateful_infer(img_array, stateful_model, frame_idx):
     # Predict using current model
     maxI_lst, predictions_lst, bb_lst = stateless_infer(img_array, stateful_model)
 
+    align_dir_cv.acquire()
     # Dump the image
-    if os.path.exists(SERVER_ALIGN_DIR):
-        shutil.rmtree(SERVER_ALIGN_DIR)
+    if not os.path.exists(SERVER_ALIGN_DIR):
+        os.mkdir(SERVER_ALIGN_DIR)
 
-    os.mkdir(SERVER_ALIGN_DIR)
-
-    if len(bb_lst) == 0: return maxI_lst, predictions_lst, bb_lst
-
+    # Add the faces in current frame into the additional dataset
     for idx, bb in enumerate(bb_lst):
         img_sub_array = img_array[bb.top() : bb.bottom(), bb.left() : bb.right()]
 
@@ -140,21 +129,12 @@ def stateful_infer(img_array, stateful_model):
         if not os.path.exists(os.path.join(SERVER_ALIGN_DIR, maxI)):
             os.mkdir(os.path.join(SERVER_ALIGN_DIR, maxI))
 
-        Image.fromarray(cv2.cvtColor(img_sub_array, cv2.COLOR_BGR2RGB)).save(os.path.join(SERVER_ALIGN_DIR, maxI, 'temp.png'))
+        Image.fromarray(cv2.cvtColor(img_sub_array, cv2.COLOR_BGR2RGB)).save(
+            os.path.join(SERVER_ALIGN_DIR, maxI, str(frame_idx) + '.png')
+        )
 
-    # Get the reps
-    os.system(
-        "{} -model {} -outDir {} -data {}".format(os.path.join(fileDir, "batch-represent", "main.lua"), SERVER_OPENFACE_MODEL, SERVER_REPS_DIR, SERVER_ALIGN_DIR)
-    )
-
-    # Append the reps to model
-    for csv_file in ["labels.csv", "reps.csv"]:
-        with open(os.path.join(os.path.dirname(SERVER_STATEFUL), csv_file), 'a') as main:
-            with open(os.path.join(SERVER_REPS_DIR, csv_file), 'r') as current:
-                main.writelines(current.readlines())
-
-    # Refit the model
-    train()
+    align_dir_cv.notify()
+    align_dir_cv.release()
 
     return maxI_lst, predictions_lst, bb_lst
 
