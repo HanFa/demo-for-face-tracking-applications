@@ -29,9 +29,11 @@ import pickle
 import sys
 
 import numpy as np
+from threading import Thread
 
 np.set_printoptions(precision=2)
 import pandas as pd
+import dlib
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.svm import SVC
@@ -41,17 +43,74 @@ from RemoteFaceClassifier.Server import *
 from RemoteFaceClassifier.Server.globals import *
 from RemoteFaceClassifier.Server.profile import MEASURE_TYPE, profiler
 
+prev_bbs = None # Optimization for finding bounding boxes, stateful model only
+
+
+def extend_boundary_box(img_array, bb):
+    """ Extend the face boundary box. Provide a reasonable region to search faces for next frame.
+        @bb: dlib.rectangle
+        @crop_img:
+    """
+    padding = SERVER_FACE_SEARCH_PADDING
+    crop_img = img_array[
+               max(bb.top() - int(bb.height() * padding), 0): bb.bottom() + int(bb.height() * padding),
+               max(bb.left() - int(bb.width() * padding), 0): bb.right() + int(bb.width() * padding)]
+
+    # Debug use snippet
+    # cv2.imshow('debug', crop_img)
+    # cv2.waitKey(0)
+
+    return crop_img
+
+
+def get_face_boxes(rgbImg, prev_bb, bbs_out):
+    """A wrapper function for align.getAllFaceBoundingBoxes """
+    res = align.getAllFaceBoundingBoxes(rgbImg)
+    local_left = res[0].left()
+    local_right = res[0].right()
+    local_top = res[0].top()
+    local_bottom = res[0].bottom()
+
+    padding = SERVER_FACE_SEARCH_PADDING
+    anchor_point = dlib.point(y=max(prev_bb.top() - int(prev_bb.height() * padding), 0),
+                              x=max(prev_bb.left() - int(prev_bb.width() * padding), 0))
+    if len(res) > 0:
+        bbs_out.append(dlib.rectangle(left=local_left + anchor_point.x,
+                                      right=local_right + anchor_point.x,
+                                      top=local_top + anchor_point.y,
+                                      bottom=local_bottom + anchor_point.y))
+    return
+
+
 def getRep(rgbImg, multiple=False):
     """Return the representations and boundaries for each person."""
 
-    global profiler
+    global profiler, prev_bbs
 
     profiler.inform_transmission_time_start(MEASURE_TYPE.LOCATE)
     if multiple:
-        bbs = align.getAllFaceBoundingBoxes(rgbImg)
+        if prev_bbs and len(prev_bbs) != 0 and SERVER_FACE_SEARCH_OPTIMIZE: # face search optimization
+            threads = []
+            bbs = []
+            for prev_bb in prev_bbs:
+                t = Thread(target=get_face_boxes, args=(extend_boundary_box(rgbImg, prev_bb), prev_bb, bbs))
+                threads.append(t)
+
+            for t in threads:
+                t.start()
+
+            for t in threads:
+                t.join()
+
+        else:
+            bbs = [bb for bb in align.getAllFaceBoundingBoxes(rgbImg)]
+
     else:
         bb1 = align.getLargestFaceBoundingBox(rgbImg)
         bbs = [bb1]
+
+
+    prev_bbs = bbs
     profiler.inform_transmission_time_stop(MEASURE_TYPE.LOCATE)
 
     if len(bbs) == 0 or (not multiple and bb1 is None):
@@ -107,13 +166,13 @@ def stateful_infer(img_array, stateful_model, frame_idx):
     # Predict using current model
     maxI_lst, predictions_lst, bb_lst = stateless_infer(img_array, stateful_model)
 
-    align_dir_cv.acquire()
     # Dump the image
     if not os.path.exists(SERVER_ALIGN_DIR):
         os.mkdir(SERVER_ALIGN_DIR)
 
     # Add the faces in current frame into the additional dataset
     for idx, bb in enumerate(bb_lst):
+        print bb
         img_sub_array = img_array[bb.top() : bb.bottom(), bb.left() : bb.right()]
 
         maxI = str(maxI_lst[idx])
@@ -123,9 +182,6 @@ def stateful_infer(img_array, stateful_model, frame_idx):
         Image.fromarray(cv2.cvtColor(img_sub_array, cv2.COLOR_BGR2RGB)).save(
             os.path.join(SERVER_ALIGN_DIR, maxI, str(frame_idx) + '.png')
         )
-
-    align_dir_cv.notify()
-    align_dir_cv.release()
 
     return maxI_lst, predictions_lst, bb_lst
 
@@ -137,16 +193,12 @@ def stateless_infer(img_array, model):
         else:
             (le, clf) = pickle.load(f, encoding='latin1')
 
-    print("\n=== Stateless {} ===")
     reps = getRep(img_array, SERVER_MULT_FACE_INFER)
-    print("reps : {}".format(reps))
 
     maxI_lst = []
     predictions_lst = []
     bb_lst = []
 
-    if len(reps) > 1:
-        print("List of faces in image from left to right")
     for r in reps:
         rep = r[1].reshape(1, -1)
         predictions = clf.predict_proba(rep).ravel()

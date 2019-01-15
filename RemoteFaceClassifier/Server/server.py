@@ -1,4 +1,4 @@
-import pickle, shutil
+import pickle, shutil, time
 import requests
 import SocketServer
 from threading import Thread, Condition
@@ -58,13 +58,14 @@ class FaceClassifierServer:
 
         while True:
             # Trigger an update of stateful model every n frames
-            align_dir_cv.acquire()
 
             global frame_num
-            while frame_num == 0 or frame_num % SERVER_UPDATE_FREQUENCY != 0:
-                align_dir_cv.wait()
+            time.sleep(5.0)
 
             # Get the reps
+            if not os.path.exists(SERVER_ALIGN_DIR):
+                continue
+
             os.system(
                 "{} -model {} -outDir {} -data {}".format(
                     os.path.join(fileDir, "batch-represent", "main.lua"),
@@ -81,7 +82,6 @@ class FaceClassifierServer:
 
             # Refit the model
             train()
-            align_dir_cv.release()
 
 
     def start(self):

@@ -7,7 +7,7 @@ SERVER_VERBOSE = False
 SERVER_IMG_DIM = 96
 SERVER_CUDA = False
 
-SERVER_MODE = "Stateless"
+SERVER_MODE = "Stateful"
 SERVER_UPDATE_FREQUENCY = 3 # Trigger an update of stateful model every n frames
 
 SERVER_CLASSIFIER = "LinearSvm"
@@ -32,3 +32,8 @@ net = openface.TorchNeuralNet(SERVER_OPENFACE_MODEL, imgDim=SERVER_IMG_DIM,
 # Output folder for performance measure
 SERVER_PROFILE_ENABLE = True
 SERVER_PROFILE_DIR = os.path.join(fileDir, 'Profile')
+
+# Parallel computing optimization
+SERVER_POOL_SIZE = 4
+SERVER_FACE_SEARCH_OPTIMIZE = True
+SERVER_FACE_SEARCH_PADDING = 1

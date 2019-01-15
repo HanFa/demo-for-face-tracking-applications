@@ -1,7 +1,7 @@
 import shutil, time
 from enum import Enum
 from RemoteFaceClassifier.Server import *
-
+from RemoteFaceClassifier.Server.globals import frame_num
 
 MEASURE_TYPE = Enum('MEASURE_TYPE', 'TRANSMISSION, LOCATE, CLASSIFY, TOTAL')
 
