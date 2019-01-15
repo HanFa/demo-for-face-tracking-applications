@@ -44,7 +44,6 @@ class FaceClassifierResultsListener:
 
             # show gui
             if SHOW_GUI:
-                print(imgs[frame_idx].shape)
                 cv2.imshow(WINDOW_NAME, imgs[frame_idx])
                 cv2.waitKey(1)
 

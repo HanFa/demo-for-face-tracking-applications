@@ -18,7 +18,7 @@ SERVER_OPENFACE_MODEL = os.path.join(fileDir, "Openface", "nn4.small2.v1.t7") # 
 SERVER_STATELESS = os.path.join(fileDir, "Stateless", "classifier.pkl")
 SERVER_STATEFUL = os.path.join(fileDir, "Stateful", "classifier.pkl")
 
-# Ouput folder for stateful
+# Output folder for stateful
 SERVER_RAW_DIR = os.path.join(fileDir, "raw")
 SERVER_ALIGN_DIR = os.path.join(fileDir, "align")
 SERVER_REPS_DIR = os.path.join(fileDir, "CurrentReps")
@@ -28,3 +28,7 @@ SERVER_MULT_FACE_INFER = True
 align = openface.AlignDlib(SERVER_DLIB_FACEPREDICTOR)
 net = openface.TorchNeuralNet(SERVER_OPENFACE_MODEL, imgDim=SERVER_IMG_DIM,
                               cuda=SERVER_CUDA)
+
+# Output folder for performance measure
+SERVER_PROFILE_ENABLE = True
+SERVER_PROFILE_DIR = os.path.join(fileDir, 'Profile')

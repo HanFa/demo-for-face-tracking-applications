@@ -6,7 +6,8 @@ from SimpleHTTPServer import SimpleHTTPRequestHandler
 from RemoteFaceClassifier import *
 from RemoteFaceClassifier.Server import *
 from RemoteFaceClassifier.Server.classifier import stateless_infer, stateful_infer, train
-from RemoteFaceClassifier.Server.globals import frame_num, align_dir_cv
+from RemoteFaceClassifier.Server.globals import *
+from RemoteFaceClassifier.Server.profile import MEASURE_TYPE, profiler
 
 
 class ServerHandler(SimpleHTTPRequestHandler):
@@ -17,9 +18,16 @@ class ServerHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
+        global profiler, frame_num
+        profiler.inform_transmission_time_start(MEASURE_TYPE.TOTAL)
+
         self._set_response()
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
+
+        profiler.inform_transmission_time_start(MEASURE_TYPE.TRANSMISSION)
         post_data = self.rfile.read(content_length)  # <--- Gets the data itself
+        profiler.inform_transmission_time_stop(MEASURE_TYPE.TRANSMISSION)
+
         frame_idx, img = pickle.loads(post_data)
 
         if SERVER_MODE == "Stateless":
@@ -39,7 +47,8 @@ class ServerHandler(SimpleHTTPRequestHandler):
         requests.post("http://{}:{}".format(CLIENT, str(CLIENT_RES_PORT)),
                       data=pickle.dumps((frame_idx, maxI_lst, predictions_lst, bb_bl_lst, bb_tr_lst)))
 
-        global frame_num
+        profiler.inform_transmission_time_stop(MEASURE_TYPE.TOTAL)
+        profiler.update_log()
         frame_num += 1
 
 

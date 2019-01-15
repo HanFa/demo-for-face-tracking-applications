@@ -35,55 +35,46 @@ import pandas as pd
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.svm import SVC
-from RemoteFaceClassifier.Server import *
 from PIL import Image
-from globals import *
 
-def getRep(img_array, multiple=False):
+from RemoteFaceClassifier.Server import *
+from RemoteFaceClassifier.Server.globals import *
+from RemoteFaceClassifier.Server.profile import MEASURE_TYPE, profiler
+
+def getRep(rgbImg, multiple=False):
     """Return the representations and boundaries for each person."""
-    start = time.time()
-    rgbImg = img_array
 
-    # rgbImg = cv2.cvtColor(bgrImg, cv2.COLOR_BGR2RGB)
+    global profiler
 
-    if SERVER_VERBOSE:
-        print("  + Original size: {}".format(rgbImg.shape))
-    if SERVER_VERBOSE:
-        print("Loading the image took {} seconds.".format(time.time() - start))
-
-    start = time.time()
-
+    profiler.inform_transmission_time_start(MEASURE_TYPE.LOCATE)
     if multiple:
         bbs = align.getAllFaceBoundingBoxes(rgbImg)
     else:
         bb1 = align.getLargestFaceBoundingBox(rgbImg)
         bbs = [bb1]
+    profiler.inform_transmission_time_stop(MEASURE_TYPE.LOCATE)
+
     if len(bbs) == 0 or (not multiple and bb1 is None):
         print("Unable to find a face")
         return []
-    if SERVER_VERBOSE:
-        print("Face detection took {} seconds.".format(time.time() - start))
 
+    profiler.inform_transmission_time_start(MEASURE_TYPE.CLASSIFY)
     reps = []
     for bb in bbs:
-        start = time.time()
         alignedFace = align.align(
             SERVER_IMG_DIM,
             rgbImg,
             bb,
             landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
+
         if alignedFace is None:
             raise Exception("Unable to align image")
-        if SERVER_VERBOSE:
-            print("Alignment took {} seconds.".format(time.time() - start))
-            print("This bbox is centered at {}, {}".format(bb.center().x, bb.center().y))
 
-        start = time.time()
         rep = net.forward(alignedFace)
-        if SERVER_VERBOSE:
-            print("Neural network forward pass took {} seconds.".format(
-                time.time() - start))
         reps.append((bb.center().x, rep, bb))
+
+    profiler.inform_transmission_time_stop(MEASURE_TYPE.CLASSIFY)
+
     sreps = sorted(reps, key=lambda x: x[0])
     return sreps
 
