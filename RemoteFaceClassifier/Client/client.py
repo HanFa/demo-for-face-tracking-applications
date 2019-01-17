@@ -31,13 +31,15 @@ class FaceClassifierResultsListener:
             for i in range(len(maxI_lst)):
                 print("\t Person id: {} \t confidence: {} \t Bound: {} {}"
                       .format(maxI_lst[i], predictions_lst[i], bb_bl_lst[i], bb_tr_lst[i]))
+
+                valid = (predictions_lst[i][maxI_lst[i]] > CLASSIFY_THRESHOLD)
                 img = cv2.rectangle(img, thickness=5, pt1=bb_bl_lst[i], pt2=bb_tr_lst[i],
                                     color=FACE_RECT_COLORS[maxI_lst[i]]
-                                        if maxI_lst[i] in FACE_RECT_COLORS.keys() else (255, 255, 255))
+                                        if valid and maxI_lst[i] in FACE_RECT_COLORS.keys() else (255, 255, 255))
 
                 img = cv2.putText(
                     img,
-                    "Person: {} Conf: {}".format(maxI_lst[i], predictions_lst[i][maxI_lst[i]]),
+                    "Person: {} Conf: {}".format(maxI_lst[i], predictions_lst[i][maxI_lst[i]]) if valid else 'Unknown',
                     bb_tr_lst[i], cv2.FONT_HERSHEY_PLAIN, 1, LABEL_COLOR, 2
                 )
 

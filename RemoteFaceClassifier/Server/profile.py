@@ -1,7 +1,7 @@
 import shutil, time
 from enum import Enum
 from RemoteFaceClassifier.Server import *
-from RemoteFaceClassifier.Server.globals import frame_num
+import RemoteFaceClassifier.Server.globals as globals
 
 MEASURE_TYPE = Enum('MEASURE_TYPE', 'TRANSMISSION, LOCATE, CLASSIFY, TOTAL')
 
@@ -81,7 +81,7 @@ class ServerProfiler:
         global frame_num
         self.append_log_line(
             '{}\t{}\t{}\t{}\t{}\n'.format(
-                frame_num, self.transmission_time, self.locate_time, self.classify_time, self.total_time))
+                globals.frame_num, self.transmission_time, self.locate_time, self.classify_time, self.total_time))
 
         self.transmission_time = 0.0
         self.locate_time = 0.0

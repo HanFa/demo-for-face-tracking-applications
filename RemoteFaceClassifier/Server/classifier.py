@@ -40,11 +40,10 @@ from sklearn.svm import SVC
 from PIL import Image
 
 from RemoteFaceClassifier.Server import *
-from RemoteFaceClassifier.Server.globals import *
 from RemoteFaceClassifier.Server.profile import MEASURE_TYPE, profiler
 
 prev_bbs = None # Optimization for finding bounding boxes, stateful model only
-
+real_bbs = None
 
 def extend_boundary_box(img_array, bb):
     """ Extend the face boundary box. Provide a reasonable region to search faces for next frame.
@@ -56,16 +55,15 @@ def extend_boundary_box(img_array, bb):
                max(bb.top() - int(bb.height() * padding), 0): bb.bottom() + int(bb.height() * padding),
                max(bb.left() - int(bb.width() * padding), 0): bb.right() + int(bb.width() * padding)]
 
-    # Debug use snippet
-    # cv2.imshow('debug', crop_img)
-    # cv2.waitKey(0)
-
     return crop_img
 
 
 def get_face_boxes(rgbImg, prev_bb, bbs_out):
     """A wrapper function for align.getAllFaceBoundingBoxes """
     res = align.getAllFaceBoundingBoxes(rgbImg)
+    if not res:
+        return
+
     local_left = res[0].left()
     local_right = res[0].right()
     local_top = res[0].top()
@@ -82,10 +80,31 @@ def get_face_boxes(rgbImg, prev_bb, bbs_out):
     return
 
 
+def align_faces(rgbImg, bb, aligned_faces_out):
+    """A wrapper function for align and net.forward"""
+    alignedFace = align.align(
+        SERVER_IMG_DIM,
+        rgbImg,
+        bb,
+        landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
+
+    if alignedFace is None:
+        raise Exception("Unable to align image")
+        return
+
+    aligned_faces_out.append((bb, alignedFace))
+
+
+def full_search_face_boxes(rgbImg):
+    global real_bbs
+    real_bbs = [bb for bb in align.getAllFaceBoundingBoxes(rgbImg)]
+    return
+
+
 def getRep(rgbImg, multiple=False):
     """Return the representations and boundaries for each person."""
 
-    global profiler, prev_bbs
+    global profiler, prev_bbs, real_bbs
 
     profiler.inform_transmission_time_start(MEASURE_TYPE.LOCATE)
     if multiple:
@@ -93,14 +112,10 @@ def getRep(rgbImg, multiple=False):
             threads = []
             bbs = []
             for prev_bb in prev_bbs:
-                t = Thread(target=get_face_boxes, args=(extend_boundary_box(rgbImg, prev_bb), prev_bb, bbs))
-                threads.append(t)
+                threads.append(Thread(target=get_face_boxes, args=(extend_boundary_box(rgbImg, prev_bb), prev_bb, bbs)))
 
-            for t in threads:
-                t.start()
-
-            for t in threads:
-                t.join()
+            for t in threads: t.start()
+            for t in threads: t.join()
 
         else:
             bbs = [bb for bb in align.getAllFaceBoundingBoxes(rgbImg)]
@@ -110,7 +125,12 @@ def getRep(rgbImg, multiple=False):
         bbs = [bb1]
 
 
-    prev_bbs = bbs
+    if real_bbs and len(real_bbs) > len(bbs):
+        prev_bbs = real_bbs
+        real_bbs = None
+    else:
+        prev_bbs = bbs
+
     profiler.inform_transmission_time_stop(MEASURE_TYPE.LOCATE)
 
     if len(bbs) == 0 or (not multiple and bb1 is None):
@@ -119,18 +139,18 @@ def getRep(rgbImg, multiple=False):
 
     profiler.inform_transmission_time_start(MEASURE_TYPE.CLASSIFY)
     reps = []
+    threads = []
+    aligned_faces = []
+
     for bb in bbs:
-        alignedFace = align.align(
-            SERVER_IMG_DIM,
-            rgbImg,
-            bb,
-            landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
+        threads.append(Thread(target=align_faces, args=(rgbImg, bb, aligned_faces)))
 
-        if alignedFace is None:
-            raise Exception("Unable to align image")
+    for t in threads: t.start()
+    for t in threads: t.join()
 
-        rep = net.forward(alignedFace)
-        reps.append((bb.center().x, rep, bb))
+    for bb, aligned_face in aligned_faces:
+        rep = net.forward(aligned_face)
+        reps.append((bb.center().x, rep, bb, aligned_face))
 
     profiler.inform_transmission_time_stop(MEASURE_TYPE.CLASSIFY)
 
@@ -164,7 +184,7 @@ def train():
 
 def stateful_infer(img_array, stateful_model, frame_idx):
     # Predict using current model
-    maxI_lst, predictions_lst, bb_lst = stateless_infer(img_array, stateful_model)
+    maxI_lst, predictions_lst, bb_lst, aligned_faces = stateless_infer(img_array, stateful_model)
 
     # Dump the image
     if not os.path.exists(SERVER_ALIGN_DIR):
@@ -172,14 +192,18 @@ def stateful_infer(img_array, stateful_model, frame_idx):
 
     # Add the faces in current frame into the additional dataset
     for idx, bb in enumerate(bb_lst):
-        print bb
-        img_sub_array = img_array[bb.top() : bb.bottom(), bb.left() : bb.right()]
 
-        maxI = str(maxI_lst[idx])
+        # maxI = str(maxI_lst[idx])
+
+        # @TODO: more generic ground truth labelling support
+        # in this case, we use the following ground truth in the video:
+        # Joe face is always on the left while Obama on the right
+        maxI = '0' if bb.center().x < 512L else '1'
+
         if not os.path.exists(os.path.join(SERVER_ALIGN_DIR, maxI)):
             os.mkdir(os.path.join(SERVER_ALIGN_DIR, maxI))
 
-        Image.fromarray(cv2.cvtColor(img_sub_array, cv2.COLOR_BGR2RGB)).save(
+        Image.fromarray(cv2.cvtColor(aligned_faces[idx], cv2.COLOR_BGR2RGB)).save(
             os.path.join(SERVER_ALIGN_DIR, maxI, str(frame_idx) + '.png')
         )
 
@@ -198,6 +222,7 @@ def stateless_infer(img_array, model):
     maxI_lst = []
     predictions_lst = []
     bb_lst = []
+    aligned_faces = []
 
     for r in reps:
         rep = r[1].reshape(1, -1)
@@ -207,8 +232,9 @@ def stateless_infer(img_array, model):
         maxI_lst.append(maxI)
         predictions_lst.append(predictions)
         bb_lst.append(r[2])
+        aligned_faces.append(r[3])
 
-    return maxI_lst, predictions_lst, bb_lst
+    return maxI_lst, predictions_lst, bb_lst, aligned_faces
 
 
 if __name__ == '__main__':

@@ -5,8 +5,8 @@ from threading import Thread, Condition
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from RemoteFaceClassifier import *
 from RemoteFaceClassifier.Server import *
-from RemoteFaceClassifier.Server.classifier import stateless_infer, stateful_infer, train
-from RemoteFaceClassifier.Server.globals import *
+from RemoteFaceClassifier.Server.classifier import stateless_infer, stateful_infer, train, full_search_face_boxes
+import RemoteFaceClassifier.Server.globals as globals
 from RemoteFaceClassifier.Server.profile import MEASURE_TYPE, profiler
 
 
@@ -18,7 +18,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        global profiler, frame_num
+        global profiler
         profiler.inform_transmission_time_start(MEASURE_TYPE.TOTAL)
 
         self._set_response()
@@ -31,7 +31,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
         frame_idx, img = pickle.loads(post_data)
 
         if SERVER_MODE == "Stateless":
-            maxI_lst, predictions_lst, bb_lst = stateless_infer(img, SERVER_STATELESS)
+            maxI_lst, predictions_lst, bb_lst, _ = stateless_infer(img, SERVER_STATELESS)
         elif SERVER_MODE == "Stateful":
             maxI_lst, predictions_lst, bb_lst = stateful_infer(img, SERVER_STATEFUL, frame_idx)
         else:
@@ -44,12 +44,18 @@ class ServerHandler(SimpleHTTPRequestHandler):
             bb_bl_lst.append((bb.bl_corner().x, bb.bl_corner().y))
             bb_tr_lst.append((bb.tr_corner().x, bb.tr_corner().y))
 
+        # Return the results to client
         requests.post("http://{}:{}".format(CLIENT, str(CLIENT_RES_PORT)),
                       data=pickle.dumps((frame_idx, maxI_lst, predictions_lst, bb_bl_lst, bb_tr_lst)))
 
         profiler.inform_transmission_time_stop(MEASURE_TYPE.TOTAL)
         profiler.update_log()
-        frame_num += 1
+
+        if globals.frame_num % 3 == 2:
+            Thread(target=full_search_face_boxes, args=(img,)).start()  # full search asyncronously
+
+        globals.frame_num += 1
+
 
 
 class FaceClassifierServer:
@@ -57,9 +63,7 @@ class FaceClassifierServer:
     def update_stateful_model(self):
 
         while True:
-            # Trigger an update of stateful model every n frames
-
-            global frame_num
+            # Trigger an update of stateful model every 5 seconds
             time.sleep(5.0)
 
             # Get the reps
@@ -72,7 +76,13 @@ class FaceClassifierServer:
                     SERVER_OPENFACE_MODEL, SERVER_REPS_DIR, SERVER_ALIGN_DIR)
             )
 
-            shutil.rmtree(SERVER_ALIGN_DIR)
+            for temp_dir in os.listdir(SERVER_ALIGN_DIR):
+                temp_dir_full = os.path.join(SERVER_ALIGN_DIR, temp_dir)
+                if not os.path.isdir(temp_dir_full):
+                    os.remove(temp_dir_full)
+                else:
+                    shutil.rmtree(temp_dir_full)
+                    os.mkdir(temp_dir_full)
 
             # Append the reps to model
             for csv_file in ["labels.csv", "reps.csv"]:
@@ -86,11 +96,15 @@ class FaceClassifierServer:
 
     def start(self):
 
-        # Spawn another thread to update stateful model regularly if stateful
+        # Spawn additional threads for stateful server
+        stateful_additional_threads = [self.update_stateful_model]
+
         if SERVER_MODE == "Stateful":
-            t = Thread(target=self.update_stateful_model)
-            t.daemon = True
-            t.start()
+            # one thread to update stateful model regularly if stateful,
+            for func in stateful_additional_threads:
+                t = Thread(target=func)
+                t.daemon = True
+                t.start()
 
         SocketServer.TCPServer.allow_reuse_address = True
         httpd = SocketServer.TCPServer((SERVER, SERVER_FRAME_PORT), ServerHandler)
