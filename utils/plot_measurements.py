@@ -2,6 +2,8 @@
 
 import os, shutil
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def cdf(array):
@@ -12,6 +14,7 @@ def cdf(array):
 
 
 if __name__ == '__main__':
+
 
     csv_file = 'RemoteFaceClassifier/Server/Profile/measure.csv'
     out_dir = 'plots'
