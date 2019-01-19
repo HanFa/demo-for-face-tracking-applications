@@ -37,8 +37,8 @@ if __name__ == '__main__':
         classify.append(float(line.split()[3]))
         total.append(float(line.split()[4]))
 
-    print transmit
 
+    plt.figure(0)
     measures_lst = [transmit, locate, classify, total]
     for idx, measures in enumerate(measures_lst):
         x, y = cdf(measures)
@@ -47,3 +47,14 @@ if __name__ == '__main__':
     plt.legend()
     plt.xlabel("Time (ms)")
     plt.savefig('latency_CDFs')
+
+    # bar plot
+    plt.figure(1)
+    x = range(len(lines) - 1)
+    total_bar = plt.bar(x, total, color=(0,0,0))
+    transmit_bar = plt.bar(x, transmit)
+    locate_bar = plt.bar(x, locate, bottom=transmit)
+    classify_bar = plt.bar(x, classify, bottom=locate)
+
+    plt.legend((total_bar[0], transmit_bar[0], locate_bar[0], classify_bar[0]), ('Total', 'Transmit', 'Locate Faces', 'Classify Faces'))
+    plt.savefig('latency_bar')
