@@ -58,3 +58,14 @@ if __name__ == '__main__':
 
     plt.legend((total_bar[0], transmit_bar[0], locate_bar[0], classify_bar[0]), ('Total', 'Transmit', 'Locate Faces', 'Classify Faces'))
     plt.savefig('latency_bar')
+
+    # average plot
+    plt.figure(2)
+    transmit_avg = sum(transmit) / len(transmit)
+    locate_avg = sum(locate) / len(locate)
+    classify_avg = sum(classify) / len(classify)
+    total_avg = sum(total) / len(total)
+
+    plt.bar(range(4), [total_avg, transmit_avg, locate_avg, classify_avg])
+    plt.xticks(range(4), ['total latency', 'transmit', 'locate faces', 'classify faces'])
+    plt.savefig('latency_avg')
