@@ -93,6 +93,8 @@ class ServerProfiler:
 
         self.cprofiler.create_stats()
         self.cprofiler.dump_stats(self.cprofile_prefix + str(globals.frame_num) + '.pyprof')
+        self.cprofiler = cProfile.Profile()
+        
         return
 
 
