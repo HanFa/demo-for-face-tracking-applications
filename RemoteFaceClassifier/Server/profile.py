@@ -1,4 +1,4 @@
-import shutil, time
+import shutil, time, cProfile, StringIO, pstats
 from enum import Enum
 from RemoteFaceClassifier.Server import *
 import RemoteFaceClassifier.Server.globals as globals
@@ -22,7 +22,7 @@ class ServerProfiler:
         self.enable = enable
         self.profile_dir = profile_dir
         self.profile = os.path.join(profile_dir, 'measure.csv')
-
+        self.cprofile_prefix = os.path.join(profile_dir, 'cprofile_measure_frame_')
 
         self.transmission_start_time = time.time()
         self.locate_start_time = time.time()
@@ -34,6 +34,8 @@ class ServerProfiler:
         self.classify_time = 0.0
         self.total_time = 0.0
 
+        self.cprofiler = cProfile.Profile()
+        self.cprofiler_io = StringIO.StringIO()
 
         if os.path.exists(profile_dir):
             shutil.rmtree(profile_dir)
@@ -54,6 +56,7 @@ class ServerProfiler:
             self.classify_start_time = time.time()
         elif measure_type == MEASURE_TYPE.TOTAL:
             self.total_start_time = time.time()
+            self.cprofiler.enable()
 
         return
 
@@ -70,6 +73,7 @@ class ServerProfiler:
             self.classify_time = time.time() - self.classify_start_time
         elif measure_type == MEASURE_TYPE.TOTAL:
             self.total_time = time.time() - self.total_start_time
+            self.cprofiler.disable()
 
         return
 
@@ -87,8 +91,9 @@ class ServerProfiler:
         self.locate_time = 0.0
         self.classify_time = 0.0
 
+        self.cprofiler.create_stats()
+        self.cprofiler.dump_stats(self.cprofile_prefix + str(globals.frame_num) + '.pyprof')
         return
-
 
 
 profiler = ServerProfiler(SERVER_PROFILE_ENABLE, SERVER_PROFILE_DIR) # Profiler for performance measure
