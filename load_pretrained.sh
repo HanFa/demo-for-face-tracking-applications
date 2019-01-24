@@ -32,9 +32,14 @@ python ./utils/align-dlib.py  --dlibFacePredictor './RemoteFaceClassifier/Server
 python ./utils/classifier.py --dlibFacePredictor './RemoteFaceClassifier/Server/FacePredictor/shape_predictor_68_face_landmarks.dat' train ./dataset/feature
 
 set -x
-echo 'load the model to stateless server'
-rm -rf ./RemoteFaceClassifier/Server/Stateless/*
-cp ./dataset/feature/* ./RemoteFaceClassifier/Server/Stateless/
+echo 'load the model to server'
+rm -rf ./RemoteFaceClassifier/Server/Pretrained/*
+
+if [ ! -d "./RemoteFaceClassifier/Server/Pretrained/" ]; then
+	mkdir ./RemoteFaceClassifier/Server/Pretrained/
+fi
+
+cp ./dataset/feature/* ./RemoteFaceClassifier/Server/Pretrained/
 
 
 
