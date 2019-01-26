@@ -81,7 +81,7 @@ class ServerHandler(SimpleHTTPRequestHandler):
                 # @TODO: more generic ground truth labelling support
                 # in this case, we use the following ground truth in the video:
                 # Joe face is always on the left while Obama on the right
-                maxI = 1 if bb.center().x < 512L else 2
+                maxI = 1 if bb.center().x < 429L else 2
                 labels = np.append(labels, maxI)
                 embeddings = np.append(embeddings, rep, axis=0)
 

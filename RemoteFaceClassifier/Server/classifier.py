@@ -110,7 +110,8 @@ def getRep(rgbImg, multiple=False):
             threads = []
             bbs = []
             for prev_bb in prev_bbs:
-                threads.append(Thread(target=get_face_boxes, args=(extend_boundary_box(rgbImg, prev_bb), prev_bb, bbs)))
+                get_face_boxes(extend_boundary_box(rgbImg, prev_bb), prev_bb, bbs)
+                # threads.append(Thread(target=get_face_boxes, args=(extend_boundary_box(rgbImg, prev_bb), prev_bb, bbs)))
 
             for t in threads: t.start()
             for t in threads: t.join()
@@ -141,7 +142,8 @@ def getRep(rgbImg, multiple=False):
     aligned_faces = []
 
     for bb in bbs:
-        threads.append(Thread(target=align_faces, args=(rgbImg, bb, aligned_faces)))
+        align_faces(rgbImg, bb, aligned_faces)
+        # threads.append(Thread(target=align_faces, args=(rgbImg, bb, aligned_faces)))
 
     for t in threads: t.start()
     for t in threads: t.join()
