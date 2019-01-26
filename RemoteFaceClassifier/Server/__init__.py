@@ -6,7 +6,7 @@ fileDir = os.path.dirname(os.path.realpath(__file__))
 SERVER_IMG_DIM = 80
 SERVER_CUDA = False
 
-SERVER_MODE = "Stateless"
+SERVER_MODE = "Stateful"
 SERVER_DLIB_FACEPREDICTOR = os.path.join(fileDir, "FacePredictor", "shape_predictor_68_face_landmarks.dat")  # Path to dlib's face predictor
 SERVER_OPENFACE_MODEL = os.path.join(fileDir, "Openface", "nn4.small2.v1.t7") # Opencface torch net model
 
