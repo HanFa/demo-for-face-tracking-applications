@@ -1,4 +1,4 @@
-VIDEO_SAMPLE_RATE = 24
+VIDEO_SAMPLE_RATE = 4
 CLIENT_FRAME_INTERVAL = 1000 # time between sending each frame (ms)
 CLASSIFY_THRESHOLD = 0.7 # label a face when the confidence is greater than this
 

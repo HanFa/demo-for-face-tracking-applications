@@ -130,6 +130,25 @@ class ServerHandler(SimpleHTTPRequestHandler):
         if globals.frame_num % 3 == 2:
             Thread(target=full_search_face_boxes, args=(img,)).start()  # full search asyncronously
 
+        for maxI, predictions, bb in zip(maxI_lst, predictions_lst,  bb_lst):
+            # Update incorrect predictions for accuracy measurement
+            # @TODO: more generic ground truth labelling support
+            # in this case, we use the following ground truth in the video:
+            # Joe face is always on the left while Obama on the right
+            if bb.center().x < 429L and maxI == 1:
+                globals.incorrect_num += 1
+            elif bb.center().x > 429L and maxI == 0:
+                globals.incorrect_num += 1
+
+        if float(globals.frame_num) == 0:
+            accuracy = 1.0
+        else:
+            accuracy = 1 - float(globals.incorrect_num) / float(globals.frame_num)
+
+        print("Incorrect/Total = {}/{}\taccuracy = {}".format(globals.incorrect_num, globals.frame_num, accuracy))
+        with open(os.path.join(fileDir, '../../results/accuracy-' + SERVER_MODE), 'a') as f:
+            f.write('{}\n'.format(accuracy))
+
         globals.frame_num += 1
 
 
