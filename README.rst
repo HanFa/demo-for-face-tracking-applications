@@ -7,6 +7,7 @@ This is a face tracking & classification application for video streaming based o
 * Remote computation. The computational tasks for tracking and classification could be done on remote server sides. The client can send frames and receives results from the server through HTTP protocol.
 * Support both stateful and stateless machine learning algorithms for facial classification. 
 
+.. image:: docs/sample.gif
 
 System Requirements
 -------------------------
