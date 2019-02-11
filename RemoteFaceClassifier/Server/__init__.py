@@ -1,5 +1,6 @@
 import os
 import openface
+from OpenFacePytorch.loadOpenFace import prepareOpenFace
 
 fileDir = os.path.dirname(os.path.realpath(__file__))
 
@@ -14,8 +15,6 @@ SERVER_PRETRAINED = os.path.join(fileDir, "Pretrained", "classifier.pkl")
 SERVER_MULT_FACE_INFER = True
 
 align = openface.AlignDlib(SERVER_DLIB_FACEPREDICTOR)
-net = openface.TorchNeuralNet(SERVER_OPENFACE_MODEL, imgDim=SERVER_IMG_DIM,
-                              cuda=SERVER_CUDA)
 
 # Output folder for performance measure
 SERVER_PROFILE_ENABLE = True
@@ -24,3 +23,10 @@ SERVER_PROFILE_DIR = os.path.join(fileDir, 'Profile')
 # Parallel computing optimization
 SERVER_FACE_SEARCH_OPTIMIZE = True
 SERVER_FACE_SEARCH_PADDING = 0.5
+
+SERVER_USE_PYTORCH = False
+if SERVER_USE_PYTORCH:
+    net = prepareOpenFace(useCuda=False).eval()
+else:
+    net = openface.TorchNeuralNet(SERVER_OPENFACE_MODEL, imgDim=SERVER_IMG_DIM,
+                                cuda=SERVER_CUDA)

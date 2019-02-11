@@ -77,7 +77,7 @@ If needed, modifies ``CLIENT`` and ``SERVER`` to correct IP addresses and ``CLIE
     
 .. role:: red
 
-:red:`Please make sure the SERVER_MODE is "Stateless" if you are using customized video.` Currently, stateful mode needs ground truth labels for each frame. The applications hardcoded the face location for the default video, asserting person0 always to be at left and person1 at right. However, this doesn't hold for customized video.
+**Please make sure the SERVER_MODE is "Stateless" if you are using customized video.** Currently, stateful mode needs ground truth labels for each frame. The applications hardcoded the face location for the default video, asserting person0 always to be at left and person1 at right. However, this doesn't hold for customized video.
 
 Next step is to launch the server, the server will start listening to the connected clients and return face boundaries once it receives video frames.
 
@@ -155,4 +155,5 @@ Server-Side Configuration: in the file `RemoteFaceClassifier/Server/__init__.py 
 +-----------------------------+-------+-----------------------------------------------------------------+
 | SERVER_FACE_SEARCH_PADDING  | float | Size of the face search space at the location of previous faces |
 +-----------------------------+-------+-----------------------------------------------------------------+
-
+| SERVER_USE_PYTORCH          | str   | Use Pytorch (not Lua subprocess) to get face representations    |
++-----------------------------+-------+-----------------------------------------------------------------+
