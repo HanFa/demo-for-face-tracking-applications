@@ -35,12 +35,13 @@ np.set_printoptions(precision=2)
 import pandas as pd
 import dlib
 
-if SERVER_USE_PYTORCH:
-    import torch
 
 from PIL import Image
 from RemoteFaceClassifier.Server import *
 from RemoteFaceClassifier.Server.profile import MEASURE_TYPE, profiler
+
+if SERVER_USE_PYTORCH:
+    import torch
 
 prev_bbs = None # Optimization for finding bounding boxes, stateful model only
 real_bbs = None
