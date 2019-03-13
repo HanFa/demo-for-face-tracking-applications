@@ -163,6 +163,7 @@ Face Server Image
 -------------------------
 
 This application has been deployed on the Ubuntu 16.04LTS server. The image is accessible at `storage <http://hanfa.me/storage/face-xenial-server.img>`_
+The username and password are ``cloudlet``.
 
 A sample script to launch the server (port should be correctly configured according to ``CLIENT_RES_PORT`` and ``SERVER_FRAME_PORT``):
 
@@ -172,3 +173,4 @@ A sample script to launch the server (port should be correctly configured accord
     qemu-system-x86_64 --enable-kvm -cpu host -smp cores=4,threads=1 -m 8192 \
     -redir tcp:20001::20001 -redir tcp:30001::30001 \
     face-xenial-server.img
+
