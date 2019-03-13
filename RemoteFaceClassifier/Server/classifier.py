@@ -34,7 +34,9 @@ from threading import Thread
 np.set_printoptions(precision=2)
 import pandas as pd
 import dlib
-import torch
+
+if SERVER_USE_PYTORCH:
+    import torch
 
 from PIL import Image
 from RemoteFaceClassifier.Server import *
@@ -103,16 +105,18 @@ def full_search_face_boxes(rgbImg):
 def forward_to_net(aligned_face):
     """Forward the aligned face image to net and retrieve face representations."""
 
-    def preprocess(img):
-        img = cv2.resize(img, (96, 96), interpolation=cv2.INTER_LINEAR)
-        img = np.transpose(img, (2, 0, 1))
-        img = img.astype(np.float32) / 255.0
-        I_ = torch.from_numpy(img).unsqueeze(0)
-        return I_
 
     if not SERVER_USE_PYTORCH:
         return net.forward(aligned_face)
     else:
+
+        def preprocess(img):
+            img = cv2.resize(img, (96, 96), interpolation=cv2.INTER_LINEAR)
+            img = np.transpose(img, (2, 0, 1))
+            img = img.astype(np.float32) / 255.0
+            I_ = torch.from_numpy(img).unsqueeze(0)
+            return I_
+
         rep = net(preprocess(aligned_face))
         return rep[0].detach().numpy()[0]
 
