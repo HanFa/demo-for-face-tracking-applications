@@ -1,6 +1,5 @@
 import os
 import openface
-from OpenFacePytorch.loadOpenFace import prepareOpenFace
 
 fileDir = os.path.dirname(os.path.realpath(__file__))
 
@@ -26,6 +25,7 @@ SERVER_FACE_SEARCH_PADDING = 0.5
 
 SERVER_USE_PYTORCH = False
 if SERVER_USE_PYTORCH:
+    from OpenFacePytorch.loadOpenFace import prepareOpenFace
     net = prepareOpenFace(useCuda=False).eval()
 else:
     net = openface.TorchNeuralNet(SERVER_OPENFACE_MODEL, imgDim=SERVER_IMG_DIM,
